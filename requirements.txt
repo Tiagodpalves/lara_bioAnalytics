@@ -1,0 +1,15 @@
+fpdf==1.7.2
+pandas==2.1.1
+gspread==5.7.2
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+numpy==1.26.0
+plotly==5.17.0
+streamlit==1.40.1
+google-api-python-client
+python-dotenv
+extra_streamlit_components
+pyjwt
+st-pages==0.5.0
+streamlit-aggrid==1.0.5
+pyyaml==6.0.1

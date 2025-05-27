@@ -66,13 +66,9 @@ show_pages([
 CREDENTIALS_FILE = "credentials.json"
 
 def load_credentials():
-    if Path(CREDENTIALS_FILE).exists():
-        try:
-            with open(CREDENTIALS_FILE, "r") as file:
-                return json.load(file)
-        except json.JSONDecodeError:
-            return {}
-    else:
+    try:
+        return st.secrets["users"]
+    except Exception:
         return {}
 
 def save_credentials(credentials):

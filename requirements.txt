@@ -13,3 +13,4 @@ pyjwt
 st-pages==0.5.0
 streamlit-aggrid==1.0.5
 pyyaml==6.0.1
+scipy

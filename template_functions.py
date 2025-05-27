@@ -30,9 +30,6 @@ class Data_API:
     @st.cache_data(ttl=43200)
     def load_data_API(sheet_name, date_field=None, columns_to_clean=[], date_format=None, sheet_tab_name=None):
         service_account_file = st.secrets["google_sheets"]
-        if not os.path.exists(service_account_file):
-            print(f"File \"{service_account_file}\" does not exist or \"DOCKER_CREDS_FILEPATH\" not correctly set")
-            return None
 
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",

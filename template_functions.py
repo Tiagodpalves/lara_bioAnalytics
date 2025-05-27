@@ -29,13 +29,15 @@ class Data_API:
     @staticmethod
     @st.cache_data(ttl=43200)
     def load_data_API(sheet_name, date_field=None, columns_to_clean=[], date_format=None, sheet_tab_name=None):
-        service_account_file = st.secrets["google_sheets"]
-
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        credentials = Credentials.from_service_account_file(service_account_file, scopes=scopes)
+        # Carrega as credenciais diretamente do secrets
+        service_account_info = st.secrets["google_sheets"]
+        credentials = Credentials.from_service_account_info(
+            service_account_info,
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+        )
         client = gspread.authorize(credentials)
 
         spreadsheet = client.open(sheet_name)
@@ -43,17 +45,21 @@ class Data_API:
         valores = sheet.get_all_values()
         df = pd.DataFrame(valores[1:], columns=valores[0])
 
+        # Tratamento de datas
         if date_field:
             if date_format == 'ms':
-                df[date_field] = pd.to_datetime(df[date_field], unit=date_format)
+                df[date_field] = pd.to_datetime(df[date_field], unit='ms')
+            else:
+                df[date_field] = pd.to_datetime(df[date_field], errors='coerce')
             df['date'] = df[date_field].dt.tz_localize(None)
-            df = df.drop(date_field, axis=1)
+            df = df.drop(columns=[date_field])
 
+        # Limpeza de colunas numéricas
         if columns_to_clean:
             for column in columns_to_clean:
                 df[column] = Data_preparation.clean_numeric(df[column])
 
-        # Armazena no cache interno
+        # Cache interno manual
         Data_API._manual_cache[(sheet_name, sheet_tab_name)] = df.copy()
 
         return df

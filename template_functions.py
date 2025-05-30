@@ -21,6 +21,10 @@ import gspread
 PRIMARY_COLOR = "#ffb6c1"
 SECONDARY_COLOR = "#416538"
 HOVER_COLOR = "#ffc1cc"
+# Constantes para configuração do mapa
+UBERLANDIA_COORDS = dict(lat=-18.9186, lon=-48.2772)
+DEFAULT_ZOOM = 8
+MAP_STYLE = "carto-positron"  # Estilo mais limpo que OpenStreetMap
 
 class Data_API:
     # Cache interno para controle manual
@@ -29,15 +33,16 @@ class Data_API:
     @staticmethod
     @st.cache_data(ttl=43200)
     def load_data_API(sheet_name, date_field=None, columns_to_clean=[], date_format=None, sheet_tab_name=None):
-        # Carrega as credenciais diretamente do secrets
-        service_account_info = st.secrets["google_sheets"]
-        credentials = Credentials.from_service_account_info(
-            service_account_info,
-            scopes=[
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"
-            ]
-        )
+        service_account_file = 'credentials_sheet.json'
+        if not os.path.exists(service_account_file):
+            print(f"File \"{service_account_file}\" does not exist or \"DOCKER_CREDS_FILEPATH\" not correctly set")
+            return None
+
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        credentials = Credentials.from_service_account_file(service_account_file, scopes=scopes)
         client = gspread.authorize(credentials)
 
         spreadsheet = client.open(sheet_name)
@@ -45,28 +50,24 @@ class Data_API:
         valores = sheet.get_all_values()
         df = pd.DataFrame(valores[1:], columns=valores[0])
 
-        # Tratamento de datas
         if date_field:
             if date_format == 'ms':
-                df[date_field] = pd.to_datetime(df[date_field], unit='ms')
-            else:
-                df[date_field] = pd.to_datetime(df[date_field], errors='coerce')
+                df[date_field] = pd.to_datetime(df[date_field], unit=date_format)
             df['date'] = df[date_field].dt.tz_localize(None)
-            df = df.drop(columns=[date_field])
+            df = df.drop(date_field, axis=1)
 
-        # Limpeza de colunas numéricas
         if columns_to_clean:
             for column in columns_to_clean:
                 df[column] = Data_preparation.clean_numeric(df[column])
 
-        # Cache interno manual
+        # Armazena no cache interno
         Data_API._manual_cache[(sheet_name, sheet_tab_name)] = df.copy()
 
         return df
 
     @staticmethod
     def overwrite_sheet(sheet_name, sheet_tab_name, df):
-        service_account_file = st.secrets["google_sheets"]
+        service_account_file = 'credentials_sheet.json'
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
@@ -458,6 +459,129 @@ class Data_Visualization:
             )
         )
 
+        return fig
+
+    def format_coords_as_float(data, lat_col="latitude", lon_col="longitude"):
+        def convert_coord(x):
+            # Verifica se o valor é None, vazio ou string vazia
+            if x is None or str(x).strip() == "":
+                return None  # ou np.nan se estiver usando pandas
+            
+            x_str = str(x).replace(',', '.').strip()  # Remove espaços
+            
+            # Se já tem ponto decimal, converte diretamente
+            if '.' in x_str:
+                try:
+                    return round(float(x_str), 7)
+                except ValueError:
+                    return None  # ou np.nan
+            
+            # Se não tem ponto decimal, divide por 1e7
+            try:
+                return round(float(x_str) / 1e7, 7)
+            except ValueError:
+                return None  # ou np.nan
+        
+        # Aplica a conversão nas colunas
+        data[lat_col] = data[lat_col].apply(convert_coord)
+        data[lon_col] = data[lon_col].apply(convert_coord)
+        
+        return data
+
+
+
+    def generate_map_plot(data, category_col=None, metric_col=None, selected_category=None):
+        lat_col = "latitude"
+        lon_col = "longitude"
+        data = Data_Visualization.format_coords_as_float(data, lat_col, lon_col)
+        
+        # Configuração de cores com destaque para selecionados
+        color_discrete_map = None
+        if selected_category and category_col:
+            color_discrete_map = {
+                selected_category: PRIMARY_COLOR,
+                **{c: SECONDARY_COLOR for c in data[category_col].unique() if c != selected_category}
+            }
+
+        fig = px.scatter_mapbox(
+            data,
+            lat=lat_col,
+            lon=lon_col,
+            color=category_col,
+            size=metric_col,
+            size_max=15,  # Controla o tamanho máximo dos marcadores
+            hover_name=category_col,
+            hover_data={col: True for col in data.columns},  # Mostrar todos os dados
+            zoom=DEFAULT_ZOOM,
+            center=UBERLANDIA_COORDS,  # Foco em Uberlândia
+            height=600,
+            color_discrete_map=color_discrete_map,
+            opacity=0.8,  # Transparência para melhor visualização
+            mapbox_style=MAP_STYLE
+        )
+
+        fig.update_layout(
+            title=dict(
+                text="Mapa de Pontos - Uberlândia/Região",
+                x=0.5,
+                font=dict(size=20)
+            ),
+            margin={"r": 20, "t": 60, "l": 20, "b": 20},
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+        
+        # Melhorar dicas de ferramenta
+        fig.update_traces(
+            hovertemplate="<b>%{hovertext}</b><br><br>" +
+            "<b>Latitude</b>: %{lat:.4f}<br>" +
+            "<b>Longitude</b>: %{lon:.4f}<br>" +
+            "<extra></extra>"
+        )
+        
+        return fig
+
+    @staticmethod
+    def generate_map_heatmap(data, weight_col=None):
+        lat_col = "latitude"
+        lon_col = "longitude"
+        data = Data_Visualization.format_coords_as_float(data, lat_col, lon_col)
+        
+        # Filtro para região de Uberlândia (opcional)
+        # data = data.query("-19.5 <= latitude <= -18.0 and -49.0 <= longitude <= -47.5")
+        
+        fig = px.density_mapbox(
+            data,
+            lat=lat_col,
+            lon=lon_col,
+            z=weight_col,
+            radius=18,  # Ajuste fino para melhor granularidade
+            zoom=DEFAULT_ZOOM,
+            center=UBERLANDIA_COORDS,  # Foco central
+            mapbox_style=MAP_STYLE,
+            height=600,
+            opacity=0.7,  # Camada semi-transparente
+            color_continuous_scale="Viridis"  # Escala de cores moderna
+        )
+
+        fig.update_layout(
+            title=dict(
+                text="Heatmap de Densidade - Uberlândia/Região",
+                x=0.5,
+                font=dict(size=20)
+            ),
+            margin={"r": 20, "t": 60, "l": 20, "b": 20},
+            coloraxis_colorbar=dict(
+                title="Densidade",
+                thickness=20
+            )
+        )
+        
         return fig
 
 class UI:

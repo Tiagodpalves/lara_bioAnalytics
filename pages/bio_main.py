@@ -42,8 +42,6 @@ for key, params in cfg.items():
     dataframes.append((df, sheet_name, sheet_tab_name, session_key))
 
 
-
-
 UI.sidebar_style()
 UI.styled_btn()
 
@@ -64,7 +62,6 @@ if selected_page == "Analisar Tabelas":
     df, sheetname, sheetTab, sheet_key = df_tuple
 
     st.markdown("---")
-    UI.header(f"Tabela: {selected_tab}", size=4)
     UI.editable_table(sheetname, sheetTab, sheet_key, editable=True)
     st.markdown("---")
 
@@ -155,10 +152,36 @@ elif selected_page == "Testes":
                         UI.data_table(df_final)
                         UI.header("Visualização Gráfica", SECONDARY_COLOR, size=3)
                         Data_Visualization.plot_from_df(resultado)
-                        
+
                         csv = df_final.to_csv(index=False).encode("utf-8")
                         st.download_button("📂 Baixar Comparativo CSV", csv, "comparativo.csv", "text/csv")
             else:
                 st.info("As tabelas selecionadas não possuem colunas numéricas em comum.")
         else:
             st.info("Selecione ao menos 2 tabelas para comparação.")
+
+elif selected_page == "Heat-Map":
+    # 🔁 Mapeia os dataframes carregados pelo session_key
+    data_options = {
+        session_key: (df, f"{sheet_name} - {sheet_tab_name}")
+        for df, sheet_name, sheet_tab_name, session_key in dataframes
+    }
+
+    # ⬇️ Escolher qual tabela mostrar no mapa
+    selected_key = st.selectbox("Selecione o conjunto de dados", options=['data_bio_maps_amostras', 'data_bio_maps_contami_parks'], format_func=lambda k: data_options[k][1])
+    # Carrega o DataFrame selecionado
+    df_selected, label = data_options[selected_key]
+
+    # ⬇️ Escolhas interativas de colunas
+    plot_type = st.selectbox("Tipo de Mapa", ["Pontos", "Heatmap"])
+    category_col = st.selectbox("Categoria para Colorir (opcional)", [None] + list(df_selected.columns))
+    metric_col = st.selectbox("Métrica para Tamanho/Intensidade (opcional)", [None] + list(df_selected.columns))
+
+    # ⬇️ Plotagem com função adaptativa
+    if plot_type == "Pontos":
+        fig = Data_Visualization.generate_map_plot(df_selected, category_col, metric_col)
+    else:
+        fig = Data_Visualization.generate_map_heatmap(df_selected, metric_col)
+
+    # ⬇️ Exibição do gráfico
+    st.plotly_chart(fig, use_container_width=True)

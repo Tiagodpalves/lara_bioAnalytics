@@ -68,3 +68,13 @@ sources:
     sheet_name: Bio_Data
     sheet_tab_name: Vermifugo
     columns_to_clean: [IgG+, IgG-]
+
+  data_parks:
+    sheet_name: bio_maps
+    sheet_tab_name: contami_parks
+    columns_to_clean: [Total de praças contaminadas,Total de praças não contaminadas,Total de praça do setor,pluviosidade,pontos_contaminados,latitude,longitude,dist_tubal,altitude,pontos_contami_setor,contami_setor,sem_contami_setor]
+
+  data_amostras_map:
+    sheet_name: bio_maps
+    sheet_tab_name: amostras
+    columns_to_clean: [latitude,longitude]

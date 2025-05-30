@@ -33,18 +33,16 @@ class Data_API:
     @staticmethod
     @st.cache_data(ttl=43200)
     def load_data_API(sheet_name, date_field=None, columns_to_clean=[], date_format=None, sheet_tab_name=None):
-        service_account_file = 'credentials_sheet.json'
-        if not os.path.exists(service_account_file):
-            print(f"File \"{service_account_file}\" does not exist or \"DOCKER_CREDS_FILEPATH\" not correctly set")
-            return None
-
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        credentials = Credentials.from_service_account_file(service_account_file, scopes=scopes)
+        # Carrega as credenciais diretamente do secrets
+        service_account_info = st.secrets["google_sheets"]
+        credentials = Credentials.from_service_account_info(
+            service_account_info,
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+        )
         client = gspread.authorize(credentials)
-
         spreadsheet = client.open(sheet_name)
         sheet = spreadsheet.worksheet(sheet_tab_name) if sheet_tab_name else spreadsheet.sheet1
         valores = sheet.get_all_values()

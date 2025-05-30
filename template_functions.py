@@ -67,12 +67,15 @@ class Data_API:
 
     @staticmethod
     def overwrite_sheet(sheet_name, sheet_tab_name, df):
-        service_account_file = 'credentials_sheet.json'
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        credentials = Credentials.from_service_account_file(service_account_file, scopes=scopes)
+        # Carrega as credenciais diretamente do secrets
+        service_account_info = st.secrets["google_sheets"]
+        credentials = Credentials.from_service_account_info(
+            service_account_info,
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+        )
         client = gspread.authorize(credentials)
         sheet = client.open(sheet_name).worksheet(sheet_tab_name)
         sheet.clear()

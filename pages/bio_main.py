@@ -194,7 +194,7 @@ elif selected_page == "Testes":
                 url = exporter.salvar_resultado(
                     resultado=st.session_state["resultado_atual"],
                     nome_teste=st.session_state["teste_atual"],
-                    pasta_principal_id="1Wotum7hiQy7QyvzdlLAGwfZRox96o52l",
+                    pasta_principal_id=st.secrets["google_sheets"],
                     nome_personalizado=nome_personalizado or None
                 )
                 st.success(f"Resultado salvo com sucesso! [Abrir planilha]({url})")

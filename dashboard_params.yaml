@@ -1,73 +1,12 @@
 sources:
-  data_Dmard:
-    sheet_name: Bio_Data
-    sheet_tab_name: Dmard
-    columns_to_clean: [IgG+, IgG-]
+  data_samples:
+    sheet_name: Bio_LabData
+    sheet_tab_name: Final_result
+    columns_to_clean: [IR_short, HAQ, Age, Income, Num_residents, Animals]
 
-  data_Frequency:
-    sheet_name: Bio_Data
-    sheet_tab_name: Frequency
-    columns_to_clean: [IgG+, IgG-]
-
-  data_Gender:
-    sheet_name: Bio_Data
-    sheet_tab_name: Gender
-    columns_to_clean: [IgG+, IgG-]
-
-  data_Glicorticoide:
-    sheet_name: Bio_Data
-    sheet_tab_name: Glicorticoide
-    columns_to_clean: [IgG+, IgG-, IgG+.1]
-
-  data_Habitation:
-    sheet_name: Bio_Data
-    sheet_tab_name: Habitation
-    columns_to_clean: [IgG+, IgG-]
-
-  data_Glicorticoide:
-    sheet_name: Bio_Data
-    sheet_tab_name: Glicorticoide
-    columns_to_clean: [IgG+, IgG-, IgG+.1]
-
-  data_Haq:
-    sheet_name: Bio_Data
-    sheet_tab_name: Haq
-    columns_to_clean: [IgG+, IgG-, Reactivity Index (RI), HAQ-DI]
-
-  data_Imuno:
-    sheet_name: Bio_Data
-    sheet_tab_name: Imuno
-    columns_to_clean: [IgG+, IgG-]
-
-  data_Income:
-    sheet_name: Bio_Data
-    sheet_tab_name: Income
-    columns_to_clean: [CHILDREN, ADULTS, INCOME LU, INCOME CT, INCOME ORD, RENDA RA, RENDA CT, INCOME SLE, INCOME SpA]
-
-  data_Pets:
-    sheet_name: Bio_Data
-    sheet_tab_name: Pets
-    columns_to_clean: [IgG+, IgG-]
-
-  data_Reatividade:
-    sheet_name: Bio_Data
-    sheet_tab_name: Reatividade
-    columns_to_clean: [ADULTS, CHILDREN, LU, CT, ORD, RA, SLE, SpA]
-
-  data_Sledai:
-    sheet_name: Bio_Data
-    sheet_tab_name: Sledai
-    columns_to_clean: [IgG+, IgG-, Reactivity Index (RI), SLEDAI]
-
-  data_Tes:
-    sheet_name: Bio_Data
-    sheet_tab_name: Tes
-    columns_to_clean: [TES, SHORT]
-
-  data_Vermifugo:
-    sheet_name: Bio_Data
-    sheet_tab_name: Vermifugo
-    columns_to_clean: [IgG+, IgG-]
+  data_elisa:
+    sheet_name: Bio_LabData
+    sheet_tab_name: Elisa
 
   data_parks:
     sheet_name: bio_maps

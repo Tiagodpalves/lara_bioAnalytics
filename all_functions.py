@@ -1045,14 +1045,14 @@ class MenuEstatistico:
 
 
 class GoogleSheetExporter:
-    def __init__(self, service_account_file: str):
-        self.service_account_file = service_account_file
+    def __init__(self, service_account_info: dict):
         self.scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
-        self.credentials = Credentials.from_service_account_file(
-            self.service_account_file, scopes=self.scopes)
+        self.credentials = Credentials.from_service_account_info(
+            service_account_info, scopes=self.scopes
+        )
         self.client = gspread.authorize(self.credentials)
         self.drive_service = build('drive', 'v3', credentials=self.credentials)
 

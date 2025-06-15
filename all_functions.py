@@ -190,7 +190,7 @@ class Data_op:
             ]
         })
 
-        return table_test, diff_median
+        return table_test.reset_index(), diff_median.reset_index()
 
     def _teste_fisher(df, category, number_column, limiar, chosen_class):
         """

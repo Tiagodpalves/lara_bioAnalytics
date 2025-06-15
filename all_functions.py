@@ -152,7 +152,7 @@ class Data_op:
 
         # Tabela do teste
         table_test = pd.DataFrame({
-            '': [
+            'Description': [
                 'P value',
                 'Exact or approximate P value?',
                 'P value summary',
@@ -171,12 +171,13 @@ class Data_op:
                 f'{stat:.4f}'
             ]
         })
-
         # Tabela de diferenças de medianas
         med_a = df_a[number_column].median()
         med_b = df_b[number_column].median()
+
+
         diff_median = pd.DataFrame({
-            '': [
+            'Description': [
                 f"Median of {cat_a}, n={len(df_a)}",
                 f"Median of {cat_b}, n={len(df_b)}",
                 'Difference: Actual',
@@ -189,6 +190,7 @@ class Data_op:
                 f'{((med_a + med_b) / 2):.4f}'
             ]
         })
+
 
         return table_test, diff_median
 

@@ -196,42 +196,72 @@ class Data_op:
 
     def _teste_fisher(df, category, number_column, limiar, chosen_class):
         """
-        Executa o teste de Fisher e retorna uma descrição markdown + tabela de contingência como DataFrame.
+        Executa o teste de Fisher e retorna uma descrição markdown + tabelas.
+        
+        Requisitos:
+        1. DataFrame não pode estar vazio após filtragem
+        2. Colunas especificadas devem existir
+        3. Deve haver exatamente 2 classes distintas na coluna 'chosen_class'
+        4. Tabela de contingência deve ser 2x2
         """
+        # 1. Filtragem por categoria
         df_category = df[df['Categories'] == category].copy()
-
-        if df_category.empty or chosen_class not in df_category.columns or number_column not in df_category.columns:
-            return None  # Dados inválidos
-
-        grupo_bin = df_category[number_column] > limiar
-
-        categorias = df_category[chosen_class].dropna().unique()
+        
+        # Verificação de dados insuficientes
+        if df_category.empty:
+            st.warning(f"Nenhum dado encontrado para a categoria: {category}")
+            return []
+        
+        # 2. Verificação de colunas válidas
+        colunas_invalidas = []
+        if chosen_class not in df_category.columns:
+            colunas_invalidas.append(chosen_class)
+        if number_column not in df_category.columns:
+            colunas_invalidas.append(number_column)
+        
+        if colunas_invalidas:
+            st.warning(f"Coluna(s) inválida(s): {', '.join(colunas_invalidas)}")
+            return []
+        
+        # 3. Remoção de NaN nas colunas críticas
+        df_category = df_category.dropna(subset=[chosen_class, number_column])
+        st.dataframe(df_category)
+        # 4. Verificação de classes
+        categorias = df_category[chosen_class].unique()
         if len(categorias) != 2:
-            return None  # Precisamos exatamente de duas classes para o teste de Fisher
-
+            st.warning(
+                f"Requer exatamente 2 classes distintas. Encontradas: {len(categorias)} classes\n"
+                f"Classes detectadas: {', '.join(map(str, categorias))}"
+            )
+            return []
+        
+        # 5. Criação de grupos binários
+        grupo_bin = df_category[number_column] > limiar
         classe_0, classe_1 = sorted(categorias)
-        classe_series = df_category[chosen_class]
 
-        # Tabela de contingência
-        contingencia = pd.crosstab(classe_series, grupo_bin)
+        # 6. Tabela de contingência
+        contingencia = pd.crosstab(df_category[chosen_class], grupo_bin)
+        
+        # Verificação de tabela 2x2
         if contingencia.shape != (2, 2):
-            return None  # Contingência inválida para teste de Fisher
+            st.warning(
+                "Tabela de contingência inválida. Formato esperado: 2x2\n"
+                f"Formato obtido: {contingencia.shape}\n"
+                "Possíveis causas:\n"
+                "- Valores únicos insuficientes nas categorias\n"
+                "- Limiar pode estar criando grupos vazios"
+            )
+            return []
 
-        # Valores absolutos
-        c0_ig_neg = contingencia.loc[classe_0, False]
-        c0_ig_pos = contingencia.loc[classe_0, True]
-        c1_ig_neg = contingencia.loc[classe_1, False]
-        c1_ig_pos = contingencia.loc[classe_1, True]
-        total_0 = c0_ig_neg + c0_ig_pos
-        total_1 = c1_ig_neg + c1_ig_pos
-        total_neg = c0_ig_neg + c1_ig_neg
-        total_pos = c0_ig_pos + c1_ig_pos
-        total_all = total_neg + total_pos
+        # 7. Cálculo do teste de Fisher
+        try:
+            oddsratio, pval = fisher_exact(contingencia)
+        except Exception as e:
+            st.error(f"Erro no cálculo de Fisher: {str(e)}")
+            return []
 
-        # Teste de Fisher
-        oddsratio, pval = fisher_exact(contingencia)
-
-        # Resumo p-valor
+        # 8. Símbolos de significância
+        summary = 'ns'
         if pval < 0.0001:
             summary = '****'
         elif pval < 0.001:
@@ -240,71 +270,69 @@ class Data_op:
             summary = '**'
         elif pval < 0.05:
             summary = '*'
-        else:
-            summary = 'ns'
 
-        # Markdown com resumo
+        # 9. Resultados em Markdown
         markdown_text = f"""
         <span style="color:{SECONDARY_COLOR}; font-weight:600; font-size:20px">Teste de Associação - Fisher</span>
-
         <ul style="list-style-type:none; padding-left: 0;">
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Table Analyzed:</span> {number_column}</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Comparison:</span> {chosen_class}</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Test:</span> Fisher's exact test</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">P value:</span> {pval:.4f}</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">P value summary:</span> {summary}</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Statistically significant (P < 0.05)?</span> {"✅ Yes" if pval < 0.05 else "❌ No"}</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">One- or two-sided:</span> Two-sided</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Data analyzed:</span> {classe_0} vs {classe_1}</li>
-        <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Group (IG status):</span> IG-, IG+</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Variável Analisada:</span> {number_column}</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Classes Comparadas:</span> {chosen_class}</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Teste:</span> Fisher's exact test</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Valor-p:</span> {pval:.4f}</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Odds Ratio:</span> {oddsratio:.4f}</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Significância:</span> {summary}</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Estatisticamente Significativo (p < 0.05)?</span> {"✅ Sim" if pval < 0.05 else "❌ Não"}</li>
+            <li><span style="color:{PRIMARY_COLOR}; font-weight:600">Classes:</span> {classe_0} vs {classe_1}</li>
         </ul>
         """
         st.markdown(markdown_text, unsafe_allow_html=True)
 
-        # Tabela descritiva
-        tabela_descritiva = pd.DataFrame({
-            'Table Analyzed': [number_column],
-            'Comparison': [chosen_class],
-            'Test': ["Fisher's exact test"],
-            'P value': [f'{pval:.4f}'],
-            'P values summary': [summary],
-            'Statistically significant (P < 0.05)?': ["Yes" if pval < 0.05 else "No"],
-            'Data analyzed': [f'{classe_0} vs {classe_1}']
-        })
+        # 10. Tabelas de resultados
+        ## Tabela absoluta
+        c0_ig_neg = contingencia.loc[classe_0, False]
+        c0_ig_pos = contingencia.loc[classe_0, True]
+        c1_ig_neg = contingencia.loc[classe_1, False]
+        c1_ig_pos = contingencia.loc[classe_1, True]
+        
+        total_0 = c0_ig_neg + c0_ig_pos
+        total_1 = c1_ig_neg + c1_ig_pos
+        total_neg = c0_ig_neg + c1_ig_neg
+        total_pos = c0_ig_pos + c1_ig_pos
+        total_all = total_0 + total_1
 
-        # Tabela com valores absolutos
         tabela_resultado = pd.DataFrame({
+            'Categoria': [classe_0, classe_1, 'Total'],
             'IG-': [c0_ig_neg, c1_ig_neg, total_neg],
             'IG+': [c0_ig_pos, c1_ig_pos, total_pos],
             'Total': [total_0, total_1, total_all]
-        }, index=[classe_0, classe_1, 'Total'])
+        })
 
-        # Percentuais por linha
-        row_percent = tabela_resultado.loc[[classe_0, classe_1]].iloc[:, :2].div(
-            tabela_resultado.loc[[classe_0, classe_1]]['Total'], axis=0
-        ) * 100
-        row_percent = row_percent.round(2)
-        row_percent['Total'] = row_percent.sum(axis=1)
-        row_percent.index.name = 'Row %'
-        row_percent.reset_index(inplace=True)
+        ## Tabela descritiva
+        tabela_descritiva = pd.DataFrame({
+            'Variável Analisada': [number_column],
+            'Classes': [f"{classe_0} vs {classe_1}"],
+            'Teste': ["Fisher's exact test"],
+            'Valor-p': [f'{pval:.4f}'],
+            'Odds Ratio': [f'{oddsratio:.4f}'],
+            'Significância': [summary],
+            'Significativo (p<0.05)': ["Sim" if pval < 0.05 else "Não"]
+        })
 
-        # Percentuais por coluna
-        column_percent = tabela_resultado.loc[[classe_0, classe_1]].iloc[:, :2].div(
-            tabela_resultado.loc['Total'][['IG-', 'IG+']], axis=1
-        ) * 100
-        column_percent = column_percent.round(2)
-        column_percent['Total'] = column_percent.sum(axis=1)
-        column_percent.index = [classe_0, classe_1]
-        column_percent.loc['Total'] = column_percent.sum()
-        column_percent.index.name = 'Column %'
-        column_percent.reset_index(inplace=True)
+        ## Percentuais por linha
+        row_percent = pd.DataFrame({
+            'Categoria': [classe_0, classe_1],
+            'IG- (%)': [c0_ig_neg/total_0*100, c1_ig_neg/total_1*100],
+            'IG+ (%)': [c0_ig_pos/total_0*100, c1_ig_pos/total_1*100]
+        }).round(2)
 
-        return [
-            tabela_resultado.reset_index(),
-            tabela_descritiva,
-            row_percent,
-            column_percent
-        ]
+        ## Percentuais por coluna
+        col_percent = pd.DataFrame({
+            'Categoria': [classe_0, classe_1],
+            'IG- (%)': [c0_ig_neg/total_neg*100, c1_ig_neg/total_neg*100],
+            'IG+ (%)': [c0_ig_pos/total_pos*100, c1_ig_pos/total_pos*100]
+        }).round(2)
+        return [tabela_resultado, tabela_descritiva, row_percent, col_percent]
+
     @staticmethod
     def clean_numeric(series):
         if series.dtype == object or series.dtype == "string":
@@ -1010,31 +1038,48 @@ class MenuEstatistico:
     @staticmethod
     def menu_fisher(dfs_disponiveis: Dict[str, pd.DataFrame]):
         '''
-            Builds the interface for selecting parameters to perform the Fisher’s exact test
+        Interface mais segura e guiada para o teste exato de Fisher
         '''
-        UI.header("🎲 Fisher’s Exact Test")
+        UI.header("Fisher’s Exact Test")
+        
         df_elisa = dfs_disponiveis["Elisa"]
         df_pac = dfs_disponiveis["Pacientes"]
 
-        elisa_column = st.selectbox("Coluna da Elisa (Tabela 1)", df_elisa.columns.tolist())
+        # Seleciona apenas colunas numéricas ou compatíveis da Elisa
+        colunas_numericas = df_elisa.columns.tolist()
+        elisa_column = st.selectbox("Coluna da Elisa (quantitativa)", colunas_numericas)
 
+        # Interseção por Sample para alinhar os DataFrames
         samples_df1 = set(df_elisa['Sample'].dropna())
         samples_df2 = set(df_pac['Sample'].dropna())
         intersecao = samples_df1 & samples_df2
         df2_filtrado = df_pac[df_pac['Sample'].isin(intersecao)].copy()
 
+        # Filtrar categorias válidas
         categorias_validas = df2_filtrado['Categories'].dropna().unique().tolist()
         categoria = st.selectbox(
-            "Filtrar por categoria específica (opcional)",
+            "Filtrar por categoria (opcional)", 
             [None] + sorted(categorias_validas),
-            format_func=lambda x: "Todos" if x is None else x
+            format_func=lambda x: "Todas" if x is None else x
         )
 
-        colunas_binarias = df_pac.columns[df_pac.nunique() <= 10].tolist()
+        # Aplicar filtro se categoria for selecionada
+        if categoria:
+            df2_filtrado = df2_filtrado[df2_filtrado['Categories'] == categoria]
+
+        # Determinar colunas com exatamente 2 classes não nulas para classificação
+        colunas_binarias = [
+            col for col in df2_filtrado.columns 
+            if df2_filtrado[col].nunique(dropna=True) == 2
+        ]
+
+        if not colunas_binarias:
+            st.warning("Nenhuma coluna de classificação binária encontrada para este filtro.")
+            return None
+
         chosen_class = st.selectbox(
-            "Coluna de Classificação (ex: Gênero)",
-            [None] + colunas_binarias,
-            format_func=lambda x: "Nenhuma" if x is None else x
+            "Coluna de Classificação (obrigatória, com 2 categorias)", 
+            colunas_binarias
         )
 
         return {
@@ -1044,6 +1089,8 @@ class MenuEstatistico:
             "categories": [categoria],
             "chosen_class": [chosen_class]
         }
+
+
 
 
 class GoogleSheetExporter:

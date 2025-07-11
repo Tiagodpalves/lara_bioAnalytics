@@ -154,30 +154,40 @@ elif selected_page == "Testes":
             """)
         params = MenuEstatistico.menu_fisher(dfs_disponiveis)
 
-    # Execute selected test
-    if st.button("Executar Teste"):
-        with st.spinner("Processando..."):
-            try:
-                resultado = Data_op.executar_teste(
-                    df1=params["df1"],
-                    df2=params.get("df2", params["df1"]),
-                    categories=params["categories"],
-                    number_column=params["number_column"],
-                    test_type=teste,
-                    limiar=1,
-                    chosen_class=params["chosen_class"],
-                )
-                st.session_state["resultado_atual"] = resultado
-                st.session_state["teste_atual"] = teste
 
-            except Exception as e:
-                st.error("Erro ao executar o teste:")
+        # Executar o teste selecionado
+        if st.button("Executar Teste"):
+            with st.spinner("Processando..."):
+                try:
+                    resultado = Data_op.executar_teste(
+                        df1=params["df1"],
+                        df2=params.get("df2", params["df1"]),
+                        categories=params["categories"],
+                        number_column=params["number_column"],
+                        test_type=teste,
+                        limiar=1,
+                        chosen_class=params["chosen_class"],
+                    )
 
-    # Display result if available
-    if "resultado_atual" in st.session_state and "teste_atual" in st.session_state:
-        UI.header("Resultado do Teste", SECONDARY_COLOR, size=4)
-        for df in st.session_state["resultado_atual"]:
-            UI.show_table(df)
+                    # Verifica se resultado é uma lista de DataFrames
+                    if resultado and isinstance(resultado, list) and all(isinstance(df, pd.DataFrame) for df in resultado):
+                        st.session_state["resultado_atual"] = resultado
+                        st.session_state["teste_atual"] = teste
+                        st.success("✅ Teste executado com sucesso!")
+                    else:
+                        st.warning("⚠️ Nenhum resultado válido foi retornado pelo teste.")
+
+                except Exception as e:
+                    st.error("Erro ao executar o teste:")
+                    st.exception(e)  # opcional: mostra detalhes do erro
+
+        # Mostrar o resultado se houver
+        if "resultado_atual" in st.session_state and "teste_atual" in st.session_state:
+            UI.header("Resultado do Teste", SECONDARY_COLOR, size=4)
+            for df in st.session_state["resultado_atual"]:
+                UI.show_table(df)
+
+
 
         
 
